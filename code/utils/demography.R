@@ -1,0 +1,8 @@
+import_population = function(){
+  population = c("0-4" = 33174,
+                 "5-14" = 50294,
+                 "15-34" = 57706,
+                 "35-54" = 40018,
+                 "55+" = 24160)
+  return(population)
+}
