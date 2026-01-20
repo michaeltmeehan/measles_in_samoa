@@ -1,15 +1,15 @@
-library(ggplot2)
-library(ggsci)
-library(dplyr)
-library(tidyr)
+# main.R
+# Purpose: Run measles burden estimation and forecasting for Samoa.
+# - Loads required packages, parameters, and utility functions.
+# - Imports data (population, seropositivity, contact matrices, vaccine coverage).
+# - Calculates burden across years and R0 values; visualizes results and forecasts scenarios.
+# Usage: Run from the project root (here::here()); requires supporting scripts in ./code/.
 
-# TODO: Add a packages script to install and load dependencies
+# Set working directory to project root
+setwd(here::here())
 
-
-# TODO: Replace line below with setwd(here::here()) for portability
-setwd("C:/Users/jc213439/Dropbox/Emma/MMR/")
-
-
+# Install and load required packages
+source("./code/required_packages.R")
 
 # Source parameters
 source("./code/parameters.R")

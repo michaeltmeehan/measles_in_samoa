@@ -1,3 +1,19 @@
+
+## transmission.R
+## Utilities for transmission modelling: next-generation matrices (NGM), effective reproduction number,
+## final-size calculation and simple bootstrap routines.
+
+#' Validate inputs for transmission calculations
+#'
+#' Ensure r0, contact matrix, population and immunity vectors are of correct
+#' type and length; normalize population if provided.
+#'
+#' @param r0 numeric, basic reproduction number (positive)
+#' @param contact_matrix square numeric matrix or NULL
+#' @param population numeric vector of group populations or NULL
+#' @param immunity numeric vector of immunity proportions (0-1) or NULL
+#' @param symmetrize logical (currently unused)
+#' @return A list with validated contact_matrix, population (normalized) and immunity
 validate_inputs_ = function(r0, contact_matrix, population, immunity, symmetrize){
   # Check r0 is numeric and positive
   if(!is.numeric(r0) || r0 <= 0){
@@ -40,6 +56,15 @@ validate_inputs_ = function(r0, contact_matrix, population, immunity, symmetrize
 
 
 
+#' Calculate scaling factor to match a target R0
+#'
+#' Compute q such that the dominant eigenvalue of the unscaled next-generation
+#' matrix equals r0.
+#'
+#' @param r0 numeric, target basic reproduction number
+#' @param contact_matrix square contact matrix
+#' @param population numeric vector of group population shares (sum to 1)
+#' @return numeric scalar q
 calc_scale_factor_ = function(r0, contact_matrix, population){
   NGM_unscaled = diag(population) %*% contact_matrix %*% diag(1 / population)
   q = r0 / max(Re(eigen(NGM_unscaled, only.values=TRUE)$values))
@@ -48,6 +73,17 @@ calc_scale_factor_ = function(r0, contact_matrix, population){
 
 
 
+#' Construct the effective next-generation matrix (NGM)
+#'
+#' Build the NGM scaled to a target r0 and accounting for group-specific
+#' immunity and population structure.
+#'
+#' @param r0 numeric, basic reproduction number
+#' @param contact_matrix square contact matrix or NULL
+#' @param population numeric vector of group population shares or NULL
+#' @param immunity numeric vector of immunity proportions or NULL
+#' @param symmetrize logical (currently unused)
+#' @return matrix, effective next-generation matrix
 make_NGM = function(r0, 
                     contact_matrix = NULL, 
                     population = NULL, 
@@ -67,6 +103,12 @@ make_NGM = function(r0,
 }
 
 
+#' Compute effective reproduction number R_eff
+#'
+#' Returns the dominant eigenvalue of the effective NGM.
+#'
+#' @inheritParams make_NGM
+#' @return numeric, effective reproduction number
 calc_reff = function(r0, 
                      contact_matrix = NULL, 
                      population = NULL, 
@@ -84,6 +126,14 @@ calc_reff = function(r0,
 }
 
 
+#' Bootstrap R_eff to obtain uncertainty intervals
+#'
+#' Uses simulate_immunity() to perturb immunity and recomputes R_eff.
+#'
+#' @param replicates integer number of bootstrap replicates
+#' @param delta numeric, parameter passed to simulate_immunity
+#' @inheritParams make_NGM
+#' @return named numeric vector with central, lower and upper bounds
 bootstrap_reff = function(r0,
                           contact_matrix=NULL,
                           population=NULL,
@@ -110,6 +160,13 @@ bootstrap_reff = function(r0,
 }
 
 
+#' Calculate final outbreak size by age group
+#'
+#' Solve the final-size equations for a multi-group model using a fixed-point
+#' iteration (final_size_solver).
+#'
+#' @inheritParams make_NGM
+#' @return numeric vector of final sizes (proportion infected) with age-group names
 calc_final_size = function(r0, 
                            contact_matrix = NULL, 
                            population = NULL, 
@@ -132,6 +189,15 @@ calc_final_size = function(r0,
 
 
 
+#' Solve final-size equations via fixed-point iteration
+#'
+#' Solve z = 1 - exp(-A %*% z) for z using simple fixed-point iteration.
+#'
+#' @param A numeric matrix in final-size equations
+#' @param z0 optional numeric initial guess
+#' @param tol numeric convergence tolerance
+#' @param maxit integer maximum iterations
+#' @return numeric vector z of final sizes (proportion infected)
 final_size_solver <- function(A, 
                               z0 = NULL,
                               tol = 1e-10, 
@@ -160,6 +226,13 @@ final_size_solver <- function(A,
 }
 
 
+#' Bootstrap final-size estimates
+#'
+#' Perturb immunity via simulate_immunity and recompute final sizes to obtain
+#' uncertainty intervals.
+#'
+#' @inheritParams bootstrap_reff
+#' @return list with central, lower and upper final-size vectors
 bootstrap_final_size = function(r0,
                                  contact_matrix=NULL,
                                  population=NULL,
