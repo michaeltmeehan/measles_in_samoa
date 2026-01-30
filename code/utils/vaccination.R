@@ -42,8 +42,10 @@ import_vaccine_coverage = function(){
 #'   arranged in descending order by year.
 forecast_vaccine_coverage = function(scenario="as-is", forecast_pars){
   coverage = import_vaccine_coverage()
-  if(scenario == "as-is"){
-  forecast_coverage = head(coverage[order(coverage$year, decreasing=TRUE), ], 1)[,-1]
+  if (scenario == "baseline"){
+    return(coverage)
+  }else if(scenario == "as-is"){
+    forecast_coverage = head(coverage[order(coverage$year, decreasing=TRUE), ], 1)[,-1]
   }else if(scenario == "improved"){
     forecast_coverage = data.frame(mcv1 = forecast_pars[[scenario]]["mcv1"], mcv2 = forecast_pars[[scenario]]["mcv2"])
   }else if(scenario == "reduced"){

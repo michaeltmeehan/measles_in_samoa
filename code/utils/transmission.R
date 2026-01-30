@@ -115,13 +115,19 @@ calc_reff = function(r0,
                      immunity = NULL,
                      symmetrize = FALSE){
   
-  NGM_eff = make_NGM(r0 = r0,
-                     contact_matrix = contact_matrix,
-                     population = population,
-                     immunity = immunity,
-                     symmetrize = symmetrize)
+  if(r0 > 0){
   
-  reff = max(Re(eigen(NGM_eff, only.values=TRUE)$values))
+    NGM_eff = make_NGM(r0 = r0,
+                       contact_matrix = contact_matrix,
+                       population = population,
+                       immunity = immunity,
+                       symmetrize = symmetrize)
+  
+    reff = max(Re(eigen(NGM_eff, only.values=TRUE)$values))
+  
+    } else {
+    reff = 0
+    }
   return(reff)
 }
 
@@ -130,6 +136,12 @@ calc_reff = function(r0,
 #'
 #' Uses simulate_immunity() to perturb immunity and recomputes R_eff.
 #'
+#' @param r0 numeric, basic reproduction number
+#' @param contact_matrix square contact matrix or NULL
+#' @param population numeric vector of group population shares or NULL
+#' @param immunity numeric vector of immunity proportions or NULL
+#' @param symmetrize logical (currently unused)
+#' @param n integer sample size for each group in serological survey
 #' @param replicates integer number of bootstrap replicates
 #' @param delta numeric, parameter passed to simulate_immunity
 #' @inheritParams make_NGM
@@ -139,6 +151,7 @@ bootstrap_reff = function(r0,
                           population=NULL,
                           immunity=NULL,
                           symmetrize=FALSE,
+                          n=1e4,
                           replicates=1000,
                           delta=0.2){
   
@@ -148,7 +161,7 @@ bootstrap_reff = function(r0,
                      immunity=immunity,
                      symmetrize=symmetrize)
   simulated_reff = replicate(replicates, {
-    simulated_immunity = simulate_immunity(immunity, delta)
+    simulated_immunity = simulate_immunity(immunity, n, delta)
     calc_reff(r0,
               contact_matrix=contact_matrix,
               population=population,

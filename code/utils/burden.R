@@ -135,73 +135,6 @@ bootstrap_burden = function(year,
 }
 
 
-#+ Compute burden over grids of years and R0 values
-#'
-#' Runs bootstrap_burden over a grid of years and r0_values and binds the
-#' resulting metric tables together with Year and R0 columns.
-#'
-#' @param years Vector of years to evaluate.
-#' @param r0_values Vector of R0 values to evaluate.
-#' @param contact_matrix Contact matrix (age x age).
-#' @param population Numeric vector of population counts by age group.
-#' @param vaccine_coverage Vaccine coverage data used by calc_immunity.
-#' @param vaccine_pars Parameters for vaccine effect.
-#' @param seropositivity Seropositivity data used by calc_immunity.
-#' @param sample_size Named list or vector of sample sizes by year.
-#' @param burden_pars List of burden parameters (e.g. ifr).
-#' @param replicates Number of bootstrap replicates.
-#' @param delta Numeric smoothing/perturbation parameter passed to
-#'   simulate_immunity.
-#' @param symmetrize Logical passed to calc_burden.
-#' @return A named list of data.frames (one per metric) containing results for
-#'   each Year x R0 combination.
-burden_year_r0 = function(years,
-                       r0_values, 
-                       contact_matrix,
-                       population, 
-                       vaccine_coverage,
-                       vaccine_pars,
-                       seropositivity,
-                       sample_size,
-                       burden_pars, 
-                       replicates=1000, 
-                       delta=0.2, 
-                       symmetrize=FALSE){
-  
-  grid = crossing(Year = years, R0 = r0_values)
-  
-  burden = pmap(grid, function(Year, R0){
-    bootstrap_burden(year = Year,
-                     r0 = R0,
-                     contact_matrix = contact_matrix,
-                     population = population,
-                     vaccine_coverage = vaccine_coverage,
-                     vaccine_pars = vaccine_pars,
-                     seropositivity = seropositivity,
-                     sample_size = sample_size,
-                     burden_pars = burden_pars,
-                     replicates = replicates,
-                     delta = delta,
-                     symmetrize = symmetrize)
-  })
-  
-  metrics = names(burden[[1]])
-  burden_results = lapply(metrics, function(metric){
-    df_list = lapply(seq_along(burden), function(i){
-      df = burden[[i]][[metric]]
-      df$Year = grid$Year[i]
-      df$R0 = grid$R0[i]
-      return(df)
-    })
-    result_df = bind_rows(df_list)
-    return(result_df)
-  })
-  names(burden_results) = metrics
-  return(burden_results)
-}
-
-
-
 #+ Forecast burden across scenarios
 #'
 #' Uses forecast_vaccine_coverage to generate vaccine coverage for each
@@ -239,18 +172,19 @@ forecast_burden = function(year,
   
   burden = lapply(scenarios, function(scenario){
     vaccine_coverage = forecast_vaccine_coverage(scenario, forecast_pars)
-    burden_scenario = bootstrap_burden(year,
-                                     r0, 
-                                     contact_matrix,
-                                     population, 
-                                     vaccine_coverage,
-                                     vaccine_pars,
-                                     seropositivity,
-                                     sample_size,
-                                     burden_pars, 
-                                     replicates, 
-                                     delta, 
-                                     symmetrize)
+    year_to_forecast = ifelse(scenario == "baseline", 2024, year)
+    burden_scenario = bootstrap_burden(year_to_forecast,
+                                       r0, 
+                                       contact_matrix,
+                                       population, 
+                                       vaccine_coverage,
+                                       vaccine_pars,
+                                       seropositivity,
+                                       sample_size,
+                                       burden_pars, 
+                                       replicates, 
+                                       delta, 
+                                       symmetrize)
     return(burden_scenario)
   })
   names(burden) = scenarios

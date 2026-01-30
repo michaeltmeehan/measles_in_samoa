@@ -3,7 +3,8 @@ required_packages <- c(
   "ggsci",
   "ggplot2",
   "readr",
-  "here"
+  "ggh4x",
+  "scales"
 )
 
 to_install <- required_packages[!required_packages %in% rownames(installed.packages())]

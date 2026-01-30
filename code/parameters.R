@@ -58,7 +58,7 @@ vaccine_pars = list(
 
 
 # Relative uncertainty in under 5 immunity
-delta = 0.1 
+delta = 0.05 
 
 
 burden_pars = list(

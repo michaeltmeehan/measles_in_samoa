@@ -5,6 +5,11 @@
 # - Calculates burden across years and R0 values; visualizes results and forecasts scenarios.
 # Usage: Run from the project root (here::here()); requires supporting scripts in ./code/.
 
+#### Setup ####
+if (!"here" %in% rownames(installed.packages())){
+  install.packages("here")
+}
+
 # Set working directory to project root
 setwd(here::here())
 
@@ -27,50 +32,33 @@ contact_matrix = import_contact_matrix()
 vaccine_coverage = import_vaccine_coverage()
 sample_size = import_sample_size()
 
-# forecasted_coverage = forecast_vaccine_coverage(scenario = "as-is")
 
 
-
-
-#### Main calculation loop ####
+#### Transmission risk estimates (reff) ####
 years = c(2018, 2019, 2023, 2024)
-r0_values = c(12, 15, 18, 20)
+r0_range = c("min" = 0, "max" = 20)
 
-burden = burden_year_r0(years,
-                     r0_values, 
-                     contact_matrix,
-                     population, 
-                     vaccine_coverage,
-                     vaccine_pars,
-                     seropositivity,
-                     sample_size,
-                     burden_pars, 
-                     replicates=10, 
-                     delta=delta, 
-                     symmetrize=FALSE)
+out = expand.grid(Year = years, R0 = r0_range)
 
-
-# Add r0 = 0 results to reff dataframe for plotting
-reff_r0_0 = expand_grid(
-  Year = years,
-  R0 = 0
-) %>%
-  mutate(
-    central = 0,
-    lower = 0,
-    upper = 0
+reff = data.frame(central = numeric(0), lower = numeric(0), upper = numeric(0))
+for (i in seq_len(nrow(out))){
+  immunity = calc_immunity(out$Year[i], vaccine_coverage, vaccine_pars, seropositivity)
+  reff = rbind(reff, bootstrap_reff(
+    r0 = out$R0[i],
+    contact_matrix = contact_matrix,
+    population = population,
+    immunity = immunity,
+    replicates = 1000,
+    n = sample_size[[as.character(out$Year[i])]],
+    delta = delta
+    ) %>% as.list() %>% as.data.frame()
   )
+}
 
-rbind(
-  reff_r0_0,
-  burden$reff %>% select(Year, R0, central, lower, upper)
-) %>% arrange(Year) -> reff_results
+out = cbind(out, reff)
 
 
-#### Visualize results ####
-reff_results %>%
-  dplyr::filter(R0 %in% c(0,max(r0_values))) %>%
-  ggplot() +
+ggplot(out) +
   geom_line(aes(x=R0, y=central, col=factor(Year), group=Year), lwd=0.8) +
   geom_ribbon(aes(x=R0, y=central, fill=factor(Year), ymin=lower, ymax=upper), alpha=0.15) +
   geom_rect(data=r0_estimates, aes(xmin=r0_min, xmax=r0_max, ymin=ymin, ymax=ymax), alpha=0.2, fill="grey") +
@@ -87,12 +75,19 @@ reff_results %>%
   geom_hline(yintercept=1, linetype="dashed", color="black", lwd=0.8) +
   custom_theme
 
+ggsave("./figs/reff_vs_r0.png", width=6, height=4, dpi=600)
+
+# Scale for r0 = 12 and r0 = 18
+cbind(Year = out[-(1:4), 1], out[-(1:4), -1] * 12 / max(r0_range))
+cbind(Year = out[-(1:4), 1], out[-(1:4), -1] * 18 / max(r0_range))
+
+
 
 
 #### Forecasting ####
 year = 2030
 r0 = 15
-scenarios = c("as-is", "improved", "reduced")
+scenarios = c("baseline", "as-is", "improved", "reduced")
 
 forecasted_burden = forecast_burden(year,
                                     scenarios,
@@ -105,31 +100,44 @@ forecasted_burden = forecast_burden(year,
                                     burden_pars,
                                     forecast_pars,
                                     replicates=1000, 
-                                    delta=0.1, 
+                                    delta=delta, 
                                     symmetrize=FALSE)
 
-burden[-c(1,2)] %>%
+forecasted_burden[2:4] %>%
   bind_rows(.id = "Metric") %>%
-  filter(Year == 2024, R0 == 15) %>%
-  mutate(Scenario = Year) %>%
-  select(Metric, central, lower, upper, age_group, Scenario) %>%
-  rbind(
-    forecasted_burden[-c(1,2)] %>%
-  bind_rows(.id = "Metric")
-  ) %>%
+  mutate(Metric = factor(Metric, levels=c("final_size", "infections", "deaths"),
+                         labels=c("Final size", "Infections", "Deaths")),
+         Scenario = factor(Scenario, 
+                           levels=c("baseline", "as-is", "improved", "reduced"),
+                           labels = c("Baseline (2024)", "As-is", "Improved", "Reduced"))) %>%
   ggplot(aes(x=age_group, y=central, fill=factor(Scenario), col=factor(Scenario))) +
   geom_bar(stat="identity", position=position_dodge(), alpha=0.5) +
   geom_errorbar(aes(ymin=lower, ymax=upper), position=position_dodge(0.9), width=0.25, lwd=0.8) +
   facet_grid(Metric ~ ., scales = "free") +
   theme_minimal() +
-  scale_fill_lancet() +
-  scale_color_lancet()  +
+  scale_fill_npg() +
+  scale_color_npg()  +
+  facetted_pos_scales(
+    y = list(
+      scale_y_continuous(
+        labels = percent_format(accuracy = 1),
+        limits = c(0, 1)
+      ),
+      scale_y_continuous(
+        limits = c(0, 8e3)
+      ),
+      scale_y_continuous(
+        limits = c(0, 60)
+      )
+    )
+  ) +
   labs(
     title = "",
     x = "Age (years)",
-    y = "Burden",
+    y = "",
     color = "Scenario",
     fill = "Scenario"
   ) +
   custom_theme
 
+ggsave("./figs/forecasted_burden.png", width=6, height=7, dpi=600)

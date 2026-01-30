@@ -217,7 +217,7 @@ calc_immunity = function(year, vaccine_coverage, vaccine_pars, seropositivity){
 simulate_immunity = function(immunity, n, delta = 0.2){
   
   simulated_immunity = vector(mode="numeric", length=5)
-  simulated_immunity[1] = runif(1, immunity[1] * (1 - delta), min(immunity[1] * (1 + delta), 1))
+  simulated_immunity[1] = runif(1, max(immunity[1] - delta, 0), min(immunity[1] + delta, 1))
   simulated_immunity[2:5] = rbinom(n=4, size=n, prob=immunity[2:5]) / n
   return(simulated_immunity)
 }
