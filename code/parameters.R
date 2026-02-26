@@ -61,14 +61,17 @@ vaccine_pars = list(
 delta = 0.05 
 
 
+source("./code/ifr.R")
+
 burden_pars = list(
-  ifr = c("0-4" = 0.0075, "5-14" = 0.004, "15-34" = 0.0016, "35-54" = 0.0016, "55+" = 0.0016)
+  # ifr = c("0-4" = 0.0075, "5-14" = 0.004, "15-34" = 0.0016, "35-54" = 0.0016, "55+" = 0.0016) - Lancet review
+  ifr = ifr
 )
 
 
 forecast_pars = list(
-  "improved" = c("mcv1" = 0.95, "mcv2" = 0.8),
-  "reduced" = c("mcv1" = 0.65, "mcv2" = 0.4)
+  "improved" = c("mcv1" = 0.95, "mcv2" = 0.95),
+  "reduced" = c("mcv1" = 0.61, "mcv2" = 0.43)
 )
 
 

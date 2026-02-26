@@ -63,7 +63,9 @@ calc_burden = function(r0, contact_matrix, population, immunity, burden_pars, sy
     reff = reff,
     final_size = final_size,
     infections = infections,
-    deaths = deaths
+    deaths = deaths,
+    total_infections = sum(infections),
+    total_deaths = sum(deaths)
   )
   
   return(burden)
