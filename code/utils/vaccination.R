@@ -50,7 +50,9 @@ forecast_vaccine_coverage = function(scenario="as-is", forecast_pars){
     forecast_coverage = data.frame(mcv1 = forecast_pars[[scenario]]["mcv1"], mcv2 = forecast_pars[[scenario]]["mcv2"])
   }else if(scenario == "reduced"){
     forecast_coverage = data.frame(mcv1 = forecast_pars[[scenario]]["mcv1"], mcv2 = forecast_pars[[scenario]]["mcv1"])
-    }else{
+  }else if(scenario == "perfect"){
+    forecast_coverage = data.frame(mcv1 = forecast_pars[[scenario]]["mcv1"], mcv2 = forecast_pars[[scenario]]["mcv1"])
+  }else{
       stop("Unknown scenario")
     }
   years = 2025:2030

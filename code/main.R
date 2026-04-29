@@ -13,7 +13,7 @@ if (!"here" %in% rownames(installed.packages())){
 }
 
 # Set working directory to project root
-setwd(here::here())
+# setwd(here::here())
 
 # Install and load required packages
 source("./code/required_packages.R")
@@ -35,6 +35,17 @@ vaccine_coverage = import_vaccine_coverage()
 sample_size = import_sample_size()
 
 
+#### Vaccine coverage ####
+ggplot(vaccine_coverage, aes(x=year)) +
+  geom_line(aes(y=mcv1, col="MCV1"), lwd=0.8) +
+  geom_line(aes(y=mcv2, col="MCV2"), lwd=0.8) +
+  labs(x = "Year", y = "Vaccine coverage", col = "Measles vaccine") +
+  theme_minimal() +
+  scale_color_npg() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits=c(0,1), breaks = seq(0, 1, by=0.2)) +
+  custom_theme
+
+ggsave("./figs/vaccine_coverage.png", width=6, height=3, dpi=600)
 
 #### Transmission risk estimates (reff) ####
 years = c(2018, 2019, 2023, 2024)
@@ -111,13 +122,13 @@ forecasted_burden[2:4] %>%
   mutate(Metric = factor(Metric, levels=c("final_size", "infections", "deaths"),
                          labels=c("Final size", "Infections", "Deaths")),
          Scenario = factor(Scenario, 
-                           levels=c("baseline", "as-is", "improved", "reduced"),
-                           labels = c("Baseline (2024)", "As-is", "Improved", "Reduced"))) %>%
+                           levels=c("baseline", "improved", "as-is", "reduced"),
+                           labels = c("Baseline (2024)", "Improved", "As-is", "Reduced"))) %>%
   filter(Scenario != "Baseline (2024)", Metric != "Final size") %>%
   ggplot(aes(x=age_group, y=central, fill=factor(Scenario), col=factor(Scenario))) +
   geom_bar(stat="identity", position=position_dodge(), alpha=0.5) +
   geom_errorbar(aes(ymin=lower, ymax=upper), position=position_dodge(0.9), width=0.25, lwd=0.8) +
-  facet_grid(Metric ~ ., scales = "free") +
+  facet_grid(Metric ~ ., scales = "free", switch = "y") +
   theme_minimal() +
   scale_fill_npg() +
   scale_color_npg()  +
@@ -139,10 +150,14 @@ forecasted_burden[2:4] %>%
     title = "",
     x = "Age (years)",
     y = "",
-    color = "Scenario",
-    fill = "Scenario"
+    color = "    Vaccination\ncoverage scenario",
+    fill = "    Vaccination\ncoverage scenario"
   ) +
-  custom_theme
+  custom_theme +
+  theme(
+    strip.placement = "outside",
+    strip.background = element_blank()
+  ) 
 
 # ggsave("./figs/forecasted_burden.png", width=6, height=7, dpi=600)
 ggsave("./figs/forecasted_infections_deaths.png", width=6, height=5, dpi=600)
@@ -169,3 +184,17 @@ forecasted_burden$deaths %>%
   arrange(proportion)
 
 
+### 2019 counterfactual (without preventive measures) ###
+forecast_burden(2019,
+                c("as-is"),
+                r0, 
+                contact_matrix,
+                population,
+                vaccine_pars,
+                seropositivity,
+                sample_size,
+                burden_pars,
+                forecast_pars,
+                replicates=10000, 
+                delta=delta, 
+                symmetrize=FALSE)

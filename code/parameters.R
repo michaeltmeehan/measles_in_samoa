@@ -71,6 +71,7 @@ burden_pars = list(
 
 forecast_pars = list(
   "improved" = c("mcv1" = 0.95, "mcv2" = 0.95),
+  "perfect" = c("mcv1" = 1., "mcv2" = 1.),
   "reduced" = c("mcv1" = 0.61, "mcv2" = 0.43)
 )
 
