@@ -99,11 +99,14 @@ round(cbind(Year = out[-(1:4), 1], out[-(1:4), -1] * 18 / max(r0_range)), 1)
 
 
 #### Forecasting ####
-year = 2030
+years = 2026:2030
 r0 = 15
 scenarios = c("baseline", "as-is", "improved", "reduced")
 
-forecasted_burden = forecast_burden(year,
+set.seed(123)
+forecasted_burden = lapply(years, function(year){
+  
+                    forecast_burden(year,
                                     scenarios,
                                     r0, 
                                     contact_matrix,
@@ -115,29 +118,32 @@ forecasted_burden = forecast_burden(year,
                                     forecast_pars,
                                     replicates=10000, 
                                     delta=delta, 
-                                    symmetrize=FALSE)
+                                    symmetrize=FALSE) %>%
+                      # burden[2:4] %>% 
+                        bind_rows(.id ="Metric") %>%
+                      mutate(Metric = factor(Metric, levels=c("final_size", "infections", "deaths", "total_infections", "total_deaths"),
+                                             labels=c("Final size", "Infections", "Deaths", "Total infections", "Total deaths")),
+                             Scenario = factor(Scenario, 
+                                               levels=c("baseline", "improved", "as-is", "reduced"),
+                                               labels = c("Baseline (2024)", "Improved", "As-is", "Reduced")))
+                    }
+                  )
+names(forecasted_burden) = years
 
-forecasted_burden[2:4] %>%
-  bind_rows(.id = "Metric") %>%
-  mutate(Metric = factor(Metric, levels=c("final_size", "infections", "deaths"),
-                         labels=c("Final size", "Infections", "Deaths")),
-         Scenario = factor(Scenario, 
-                           levels=c("baseline", "improved", "as-is", "reduced"),
-                           labels = c("Baseline (2024)", "Improved", "As-is", "Reduced"))) %>%
-  filter(Scenario != "Baseline (2024)", Metric != "Final size") %>%
+forecasted_burden = forecasted_burden %>%
+  bind_rows(.id = "Year")
+
+forecasted_burden %>%
+  filter(Scenario != "Baseline (2024)", Metric %in% c("Infections", "Deaths"), Year %in% c(2026, 2028, 2030)) %>%
   ggplot(aes(x=age_group, y=central, fill=factor(Scenario), col=factor(Scenario))) +
   geom_bar(stat="identity", position=position_dodge(), alpha=0.5) +
   geom_errorbar(aes(ymin=lower, ymax=upper), position=position_dodge(0.9), width=0.25, lwd=0.8) +
-  facet_grid(Metric ~ ., scales = "free", switch = "y") +
+  facet_grid(Metric ~ Year, scales = "free", switch = "y") +
   theme_minimal() +
   scale_fill_npg() +
   scale_color_npg()  +
   facetted_pos_scales(
     y = list(
-      # scale_y_continuous(
-      #   labels = percent_format(accuracy = 1),
-      #   limits = c(0, 1)
-      # ),
       scale_y_continuous(
         limits = c(0, 1e4)
       ),
@@ -156,32 +162,30 @@ forecasted_burden[2:4] %>%
   custom_theme +
   theme(
     strip.placement = "outside",
-    strip.background = element_blank()
+    strip.background = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)
   ) 
 
-# ggsave("./figs/forecasted_burden.png", width=6, height=7, dpi=600)
-ggsave("./figs/forecasted_infections_deaths.png", width=6, height=5, dpi=600)
+ggsave("./figs/forecasted_infections_deaths.png", width=7, height=4, dpi=600)
 
-cbind(round(forecasted_burden$total_infections[,1:3]), forecasted_burden$total_infections[,4:5])
-cbind(round(forecasted_burden$total_deaths[,1:3]), forecasted_burden$total_deaths[,4:5])
+forecasted_burden %>%
+  filter(Scenario != "Baseline (2024)", Metric %in% c("Total infections", "Total deaths"), Year %in% c(2026, 2030)) %>%
+  select(-age_group) %>%
+  mutate(across(where(is.numeric), ~ round(.x)))
 
-forecasted_burden$infections %>%
-  group_by(Scenario) %>%
+
+
+forecasted_burden %>%
+  filter(Scenario != "Baseline (2024)", Metric %in% c("Infections", "Deaths"), Year %in% c(2026, 2030)) %>%
+  group_by(Metric, Scenario, Year) %>%
   summarise(
     total_central = sum(central),
     child_central = sum(central[age_group %in% c("0-4")]),
-    proportion = child_central / total_central
+    proportion = round(child_central / total_central * 100)
   ) %>%
   arrange(proportion)
 
-forecasted_burden$deaths %>%
-  group_by(Scenario) %>%
-  summarise(
-    total_central = sum(central),
-    child_central = sum(central[age_group %in% c("0-4")]),
-    proportion = child_central / total_central
-  ) %>%
-  arrange(proportion)
+
 
 
 ### 2019 counterfactual (without preventive measures) ###
